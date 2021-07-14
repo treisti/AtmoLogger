@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta charset="utf-8">
+        <title>AtmoLogger</title>
+        <link rel="stylesheet" href="uPlot.min.css">
+        <style>
+.chart
+{
+    margin: 0 auto;
+    margin-bottom: 50px;
+}
+        </style>
+    </head>
+    <body>
+        <h2 style="text-align: center;">AtmoLogger</h2>
+        <h3 style="text-align: center;" id="wait"></h3>
+        <h4 style="text-align: center;" id="current"></h4>
+        <script src="uPlot.iife.min.js"></script>
+        <script>
+function fillDataTimestampsHour(data)
+{
+    var date = new Date();
+    date.setSeconds(0);
+    for (var i = data[0].length - 1; i >= 0; i--)
+    {
+        data[0][i] = Math.floor(date.getTime() / 1000);
+        date.setMinutes(date.getMinutes() - 10);
+    }
+}
+function fillDataTimestampsDay(data)
+{
+    var date = new Date();
+    date.setSeconds(0);
+    date.setMinutes(0);
+    for (var i = data[0].length - 1; i >= 0; i--)
+    {
+        data[0][i] = Math.floor(date.getTime() / 1000);
+        date.setHours(date.getHours() - 1);
+    }
+}
+function fillDataTimestampsWeek(data)
+{
+    var date = new Date();
+    date.setSeconds(0);
+    date.setMinutes(0);
+    date.setHours(0);
+    for (var i = data[0].length - 1; i >= 0; i--)
+    {
+        data[0][i] = Math.floor(date.getTime() / 1000);
+        date.setHours(date.getHours() - 6);
+    }
+}
+function fillDataTimestampsMonth(data)
+{
+    var date = new Date();
+    date.setSeconds(0);
+    date.setMinutes(0);
+    date.setHours(0);
+    for (var i = data[0].length - 1; i >= 0; i--)
+    {
+        data[0][i] = Math.floor(date.getTime() / 1000);
+        date.setHours(date.getHours() - 24);
+    }
+}
+
+function buildChart(data, title)
+{
+    let opts = {
+        title: title,
+        width: 1080,
+        height: 720,
+        class: "chart",
+        series: [
+            {},
+            {
+                label: "Humidity",
+                scale: "%",
+                value: (self, rawValue) => rawValue.toFixed(2) + "%",
+                stroke: "blue",
+                width: 1,
+                fill: "rgba(0, 0, 255, 0.3)",
+            },
+            {
+                label: "Barometric pressure",
+                scale: "hPa",
+                value: (self, rawValue) => rawValue.toFixed(2) + "hPa",
+                stroke: "green",
+                width: 2,
+                dash: [10, 5],
+            },
+            {
+                label: "Temperature",
+                scale: "°C",
+                value: (self, rawValue) => rawValue.toFixed(2) + "°C",
+                stroke: "red",
+                width: 2
+            }
+        ],
+        axes:
+        [
+            {},
+            {
+                scale: "%",
+                values: (u, vals, space) => vals.map(v => +v.toFixed(1) + "%"),
+            },
+            {
+                side: 1,
+                scale: "°C",
+                size: 60,
+                values: (u, vals, space) => vals.map(v => +v.toFixed(2) + "°C"),
+                grid: {show: false},
+            },
+            {
+                side: 1,
+                scale: "hPa",
+                size: 60,
+                values: (u, vals, space) => vals.map(v => +v.toFixed(2) + "hPa"),
+                grid: {show: false},
+            },
+        ],
+    };
+    let uplot = new uPlot(opts, data, document.body);
+}
+
+let wait = document.getElementById("wait");
+wait.textContent = "Fetching..."
+
+var xhr = new XMLHttpRequest();
+xhr.open("GET", "/data", true);
+xhr.responseType = "json";
+xhr.onload = function()
+{
+    var status = xhr.status;
+    if (status === 200)
+    {
+        var data = xhr.response;
+        wait.textContent = "";
+
+        document.getElementById("current").textContent =
+            data.humidity + "%" + " / " +
+            data.temperature + "°C" + " / " +
+            data.pressure + "hPa";
+
+        wait.textContent = "Rendering charts...";
+
+        var hourData = data.hour;
+        fillDataTimestampsHour(hourData);
+        buildChart(hourData, "Last hours");
+
+        var dayData = data.day;
+        fillDataTimestampsDay(dayData);
+        buildChart(dayData, "Last day");
+
+        var weekData = data.week;
+        fillDataTimestampsWeek(weekData);
+        buildChart(weekData, "Last week");
+
+        var monthData = data.month;
+        fillDataTimestampsMonth(monthData);
+        buildChart(monthData, "Last month");
+
+        wait.textContent = "";
+    }
+    else
+    {
+        wait.textContent = "Error " + status;
+    }
+};
+xhr.onerror = function()
+{
+    wait.textContent = "Fetching error";
+}
+xhr.send();
+        </script>
+    </body>
+</html>
